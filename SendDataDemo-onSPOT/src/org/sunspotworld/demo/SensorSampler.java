@@ -1,17 +1,13 @@
 package org.sunspotworld.demo;
 
 import com.sun.spot.io.j2me.radiogram.*;
+import com.sun.squawk.util.StringTokenizer;
 //import com.sun.spot.resources.Resources;
 //import com.sun.spot.resources.transducers.ITriColorLED;
 //import com.sun.spot.resources.transducers.ILightSensor;
 //import com.sun.spot.util.Utils;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-//import java.io.ObjectInput;
-//import java.io.ObjectInputStream;
 import java.util.Hashtable;
-//import java.util.Iterator;
-//import java.util.Map.Entry;
 import javax.microedition.io.*;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.midlet.MIDletStateChangeException;
@@ -28,6 +24,7 @@ import javax.microedition.midlet.MIDletStateChangeException;
 public class SensorSampler extends MIDlet {
 
     private static final int HOST_PORT = 67;
+    private static final int COMMUNICATION_PORT = 43;
     
     private static final int RECEIVE = 0;
     private static final int ROUTE = 1;
@@ -38,47 +35,46 @@ public class SensorSampler extends MIDlet {
     private FloodingRoutingLayer layer = new FloodingRoutingLayer();
     
     //tabela com correspond√™ncia entre id no simulador (virtual) e o port dos n√≥s reais
-    private Hashtable portTable;
-    private Hashtable connections;
-    private int port;
+    //private Hashtable portTable;
+    //private Hashtable connections;
+    //private Short port;
     
     /**
      * The id of the node. It is allowed that two nodes have the same id in the
      * simulator.
      */
     protected short id;
-    private boolean portTableReceived = false;
+    //private boolean portTableReceived = false;
     
     protected void startApp() throws MIDletStateChangeException {
-        RadiogramConnection rCon = null;
+        RadiogramConnection hostReceiveConnection = null;
+        RadiogramConnection hostSendConnection = null;
         Datagram dg = null;
         //String ourAddress = System.getProperty("IEEE_ADDRESS");
         //System.out.println("Starting sensor sampler application on " + ourAddress + " ...");
 
-    // Listen for downloads/commands over USB connection
-    new com.sun.spot.service.BootloaderListenerService().getInstance().start();
+        // Listen for downloads/commands over USB connection
+        new com.sun.spot.service.BootloaderListenerService().getInstance().start();
 
-        try {
-            rCon = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
-            dg = rCon.newDatagram(rCon.getMaximumLength());
-            
-        } catch (Exception e) {
-            System.err.println("Caught " + e + " in connection initialization.");
-            notifyDestroyed();
+        // Recebe o seu id vindo do host. Enquanto n„o tiver recebido, continua a tentar.
+        boolean receiveIdFromHostWorked = false;
+        while(!receiveIdFromHostWorked) {
+            //TODO: se nao recebe, tem de pedir de novo!! 
+            receiveIdFromHostWorked = this.receiveIdFromHost(hostReceiveConnection, hostReceiveConnection, dg);
         }
         
-        //recever ports do host
-        this.receivePorts(rCon, dg);
-        //set port deste spot
-        
-        Short sId = new Short(getId());
-        setPort(portTable.get(sId));
-        
-        this.openConnections();
-        
+        /*
+         * Loop infinito
+         * Espera por mensagens do host (vindas do simulador)
+         * Se este for o destinat·rio da mensagem, executa funÁ„o de recepÁ„o
+         * Else, faz broadcast da mensagem
+         * 
+         * Enquanto espera por mensagens do host, tambÈm tem de esperar por mensagens dos outros SunSpots (como?)
+         * 
+         */
         while (true) {
             try {
-                rCon.receive(dg);
+                hostReceiveConnection.receive(dg);
                 //inicializar como deve ser?
                 byte[] b = null;
                 dg.readFully(b);
@@ -110,49 +106,83 @@ public class SensorSampler extends MIDlet {
      *         communication methods       *
      ***************************************/
     
-    //receber a tabela de ports
-    public void receivePorts(RadiogramConnection rCon, Datagram dg) {
-        while(!portTableReceived) {
-            try{
-                rCon.receive(dg);
-                //inicializar como deve ser?
-                byte[] b = null;
-                dg.readFully(b);
-                this.setPortTable((Hashtable) bytesToObject(b));
-                
-                portTableReceived = true;
-            } catch(Exception e) {
-                System.err.println("Caught " + e + " while connecting to host to receive Port Table.");
-            }
+    //talvez seja preciso criar um metodo para cada
+    public boolean openHostConnections(RadiogramConnection hostReceiveConnection, RadiogramConnection hostSendConnection){
+        try{
+            hostReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
+            hostSendConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
+            return true;
+        } catch(Exception e){
+            System.err.println("Caught " + e + " in connection initialization.");
+            //TODO: ver que È isto
+            notifyDestroyed();
+            return false;
         }
     }
     
-    //abre conexoes para cada outro spot
-    public void openConnections(){
-        
-        Iterator<Entry<Short, Integer>> portsIt = portTable.entrySet().iterator();
-        short thisID = this.getId();
-        while(portsIt.hasNext()){
+    public boolean receiveIdFromHost(RadiogramConnection hostReceiveConnection, RadiogramConnection hostSendConnection, Datagram dg){
+        try {
+            dg = hostReceiveConnection.newDatagram(hostReceiveConnection.getMaximumLength());
+            short id = dg.readShort();
+            this.setId(id);
+            return true;
+        } catch (Exception e) {
+            // on catch talvez pedir de novo
             
-            RadiogramConnection newCon = null;
-            short currentID = portsIt.next().getKey();
-            //n√£o abrir conex√£o para si mesmo
-            if(thisID != currentID){
-               
-                int currentPort = portsIt.next().getValue();
-                try {
-                    newCon=  (RadiogramConnection) Connector.open("radiogram://:" + currentPort);
-                    connections.put(currentID, newCon);
-
-                } catch (Exception e) {
-                    System.err.println("Caught " + e + " in connection initialization.");
-                    notifyDestroyed();
-                }
-            }
-            
-        }
-        
+            return false;
+        }        
     }
+    
+    //receber um dg com um Short id a uma String com todos os dados que v„o compor a tabela de ports
+//    public void receivePorts(RadiogramConnection hostConnection, Datagram dg) {
+//        while(!portTableReceived) {
+//            try{
+//                hostConnection.receive(dg);
+//                setId(dg.readShort());
+//                String rawPortsString = dg.readUTF();
+//                //Divide a string recebida (ex: "54,65;87,99,7;82") em varios tokens
+//                StringTokenizer portIdPairs = new StringTokenizer(rawPortsString, ";");
+//                StringTokenizer portAndId = null;
+//                //Divide os tokens em pares id/porta e adiciona a tabela
+//                while(portIdPairs.hasMoreTokens()) {
+//                    portAndId = new StringTokenizer(portIdPairs.nextToken(), ",");
+//                    String id = portAndId.nextToken();
+//                    String port = portAndId.nextToken();
+//                    portTable.put(id, port);
+//                }
+//                portTableReceived = true;
+//            } catch(Exception e) {
+//                System.err.println("Caught " + e + " while connecting to host to receive Port Table.");
+//            }
+//        }
+//    }
+    
+    //abre conexoes para cada outro spot
+//    public void openConnections(){
+//        
+//        Iterator<Entry<Short, Integer>> portsIt = portTable.entrySet().iterator();
+//        short thisID = this.getId();
+//        while(portsIt.hasNext()){
+//            
+//            RadiogramConnection newCon = null;
+//            short currentID = portsIt.next().getKey();
+//            //n√£o abrir conex√£o para si mesmo
+//            if(thisID != currentID){
+//               
+//                int currentPort = portsIt.next().getValue();
+//                try {
+//                    newCon=  (RadiogramConnection) Connector.open("radiogram://:" + currentPort);
+//                    connections.put(currentID, newCon);
+//
+//                } catch (Exception e) {
+//                    System.err.println("Caught " + e + " in connection initialization.");
+//                    notifyDestroyed();
+//                }
+//            }
+//            
+//        }
+//        
+//    }
     
     public void broadcast(Object message){
         DatagramConnection connection = null;
@@ -204,30 +234,6 @@ public class SensorSampler extends MIDlet {
      *         auxiliary methods       *
      ***************************************/
     
-    // convert byte[] to object (desserializar)
-    public Object bytesToObject(byte[] bytes) throws ClassNotFoundException, IOException{
-        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-        ObjectInput in = null;
-        try {
-            in = new ObjectInputStream(bis);
-            Object o = in.readObject();
-            return o;
-        } finally {
-            try {
-                bis.close();
-            } catch (IOException ex) {
-            // ignore close exception
-            }
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException ex) {
-            // ignore close exception
-            }
-        }
-    }
-    
     public final void setId(short id) {
         this.id = id;
     }
@@ -235,22 +241,7 @@ public class SensorSampler extends MIDlet {
     public short getId() {
         return id;
     }
-
-    public Hashtable getPortTable() {
-        return portTable;
-    }
-
-   public void setPortTable(Hashtable portTable) {
-        this.portTable = portTable;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
-    }
+    
     /***************************************
      *         auxiliary methods       *
      ***************************************/
