@@ -24,7 +24,7 @@ import javax.microedition.midlet.MIDletStateChangeException;
 public class SensorSampler extends MIDlet {
 
     private static final int HOST_PORT = 67;
-    private static final int COMMUNICATION_PORT = 43;
+    private static final int SPOT_COMMUNICATION_PORT = 43;
     
     private static final int RECEIVE = 0;
     private static final int ROUTE = 1;
@@ -48,20 +48,28 @@ public class SensorSampler extends MIDlet {
     
     protected void startApp() throws MIDletStateChangeException {
         RadiogramConnection hostReceiveConnection = null;
+        //TODO: nao sei se sencon vai ser usado...
         RadiogramConnection hostSendConnection = null;
         Datagram dg = null;
+        RadiogramConnection spotCommunicationReceiveConnection = null;
+        RadiogramConnection spotCommunicationSendConnection = null;
         //String ourAddress = System.getProperty("IEEE_ADDRESS");
         //System.out.println("Starting sensor sampler application on " + ourAddress + " ...");
 
         // Listen for downloads/commands over USB connection
         new com.sun.spot.service.BootloaderListenerService().getInstance().start();
 
+        this.openHostConnections(hostReceiveConnection, hostSendConnection);
         // Recebe o seu id vindo do host. Enquanto não tiver recebido, continua a tentar.
-        boolean receiveIdFromHostWorked = false;
-        while(!receiveIdFromHostWorked) {
-            //TODO: se nao recebe, tem de pedir de novo!! 
-            receiveIdFromHostWorked = this.receiveIdFromHost(hostReceiveConnection, hostReceiveConnection, dg);
-        }
+//        boolean receiveIdFromHostWorked = false;
+//        while(!receiveIdFromHostWorked) {
+            //TODO: penso que se nao recebe, tem de pedir de novo!! 
+    //        receiveIdFromHostWorked = 
+        this.receiveIdFromHost(hostReceiveConnection, hostReceiveConnection, dg);
+//        }
+        
+        this.openSpotCommunicationConnections(spotCommunicationReceiveConnection, spotCommunicationSendConnection);
+        
         
         /*
          * Loop infinito
@@ -74,12 +82,18 @@ public class SensorSampler extends MIDlet {
          */
         while (true) {
             try {
-                hostReceiveConnection.receive(dg);
-                //inicializar como deve ser?
+                spotCommunicationReceiveConnection.receive(dg);
+                
+                long numberOfTotalMessage = dg.readLong();
+                long messageNumber = dg.readLong();
                 byte[] b = null;
                 dg.readFully(b);
-                
-                Message m = (Message) bytesToObject(b);
+                byte[] payload = b;
+                long totalHops = dg.readLong();
+                Short sourceId = new Short(dg.readShort());
+                Short destinationId = new Short(dg.readShort());
+                Short uniqueId = new Short(dg.readShort());
+                Message m = new Message(numberOfTotalMessage, messageNumber, payload, totalHops, sourceId, destinationId, uniqueId);
                 
                 int result = layer.onReceiveMessage(m);
                 switch(result){
@@ -106,6 +120,21 @@ public class SensorSampler extends MIDlet {
      *         communication methods       *
      ***************************************/
     
+    
+    public boolean openSpotCommunicationConnections(RadiogramConnection spotCommunicationReceiveConnection, RadiogramConnection spotCommunicationSendConnection) {
+        
+        try{
+            spotCommunicationReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
+            spotCommunicationSendConnection = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
+            return true;
+        } catch(Exception e){
+            System.err.println("Caught " + e + " in spot connection initialization.");
+            //TODO: ver que é isto
+            notifyDestroyed();
+            return false;
+        }
+    }
+    
     //talvez seja preciso criar um metodo para cada
     public boolean openHostConnections(RadiogramConnection hostReceiveConnection, RadiogramConnection hostSendConnection){
         try{
@@ -113,7 +142,7 @@ public class SensorSampler extends MIDlet {
             hostSendConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
             return true;
         } catch(Exception e){
-            System.err.println("Caught " + e + " in connection initialization.");
+            System.err.println("Caught " + e + " in host connection initialization.");
             //TODO: ver que é isto
             notifyDestroyed();
             return false;
@@ -197,7 +226,7 @@ public class SensorSampler extends MIDlet {
         //criar conexao e datagrama
         try {
             // Open up a broadcast connection to the host port where the 'on Desktop' portion of this demo is listening
-            connection = (DatagramConnection) Connector.open("radiogram://broadcast:" + getPort());
+            connection = (DatagramConnection) Connector.open("radiogram://broadcast:" + SPOT_COMMUNICATION_PORT);
             datagram = connection.newDatagram(50);  // only sending 12 bytes of data
         } catch (Exception e) {
             System.err.println("Caught " + e + " in connection initialization.");
