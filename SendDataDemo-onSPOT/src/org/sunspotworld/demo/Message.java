@@ -53,6 +53,24 @@ public class Message {
     }
 
     /**
+     * Constructor
+     * @param payload
+     */
+    public Message(long numberOfTotalMessage, long messageNumber, byte[] payload, long totalHops, Object sourceId, Object destinationId, Object uniqueId) {
+        if (payload == null) {
+            throw new IllegalArgumentException("Payload cannot be null");
+        }
+        this.payload = payload;
+        this.messageNumber = messageNumber;
+        this.numberOfTotalMessage = numberOfTotalMessage;
+        this.payload = payload;
+        this.totalHops = totalHops;
+        this.sourceId = sourceId;
+        this.destinationId = destinationId;
+        this.uniqueId = uniqueId;
+    }
+
+    /**
      * Get de total number of messages in Simulation
      * @return
      */
