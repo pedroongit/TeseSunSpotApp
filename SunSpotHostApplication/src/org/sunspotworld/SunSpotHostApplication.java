@@ -6,22 +6,13 @@
 
 package org.sunspotworld;
 
-import com.sun.spot.peripheral.radio.RadioFactory;
-import com.sun.spot.peripheral.radio.IRadioPolicyManager;
-import com.sun.spot.io.j2me.radiostream.*;
 import com.sun.spot.io.j2me.radiogram.*;
 import com.sun.spot.peripheral.ota.OTACommandServer;
-import com.sun.spot.util.IEEEAddress;
 
-import java.io.*;
-import java.text.DateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import javax.microedition.io.*;
 
 
@@ -31,17 +22,19 @@ import javax.microedition.io.*;
 public class SunSpotHostApplication {
     // Broadcast port on which we listen for sensor samples
     private static final int HOST_PORT = 67;
+    private static final int SPOT_COMMUNICATION_PORT = 43;
 
     /**
      * Print out our radio address.
      */
     public void run() {
         RadiogramConnection sCon = null;
+        RadiogramConnection spotCommunicationSendConnection = null;
         Datagram dg = null;
-        DateFormat fmt = DateFormat.getTimeInstance();
         Map<Short, String> idAddressMap = new HashMap<Short, String>();
+//      Map<Short, RadiogramConnection> idConnectionMap = new HashMap<Short, RadiogramConnection>();
         
-        //2 spots existentes. TODO: em vez desta maneira, os spots enviam um ping so para que o host conheça o seu IEEE Address
+        //2 spots existentes. Numa fase inicial, address dos spots é hardcodded TODO: em vez desta maneira, os spots enviam um ping so para que o host conheça o seu IEEE Address
         idAddressMap.put(new Short("1"), "0014.4F01.0000.6414");
         idAddressMap.put(new Short("2"), "0014.4F01.0000.612C");
         
@@ -52,30 +45,62 @@ public class SunSpotHostApplication {
                 Short id = next.getKey();
                 String ieeeAddress = next.getValue();
                 
-                // Open up a server-side broadcast radiogram connection
-                // to listen for sensor readings being sent by different SPOTs
+                // Abre conexao para o Spot corrente
                 sCon = (RadiogramConnection) Connector.open("radiogram://:" + ieeeAddress + HOST_PORT);
+                
+                // Escreve e envia o datagrama
+                dg.reset();
+                dg.writeShort(id);
+                sCon.send(dg);
+                
+                
                 dg = sCon.newDatagram(sCon.getMaximumLength());
             } catch (Exception e) {
                  System.err.println("setUp caught " + e.getMessage());
                  //throw e;
             }
         }
-        /* Envio do id a cada Spot.
-         * Numa fase inicial, address dos spots é hardcodded
-         */
         
-        try {
-
-            dg.reset();
-            dg.writeShort(now);
-            sCon.send(dg);
-
-            System.out.println(fmt.format(new Date(time)) + "  from: " + addr + "   value = " + val);
-        } catch (Exception e) {
-            System.err.println("Caught " + e +  " while reading sensor samples.");
-            //throw e;
+        try{
+            spotCommunicationSendConnection = (RadiogramConnection) Connector.open("radiogram://broadcast:" + SPOT_COMMUNICATION_PORT);
+        } catch(Exception e){
+            System.err.println("Caught " + e + " in spot connection initialization.");
         }
+        
+        /*
+         * Ciclo que envia mensagens para os Spots
+         */
+        while(true) {
+            // dummy message values
+            long numberOfTotalMessage = (long)(Math.random() * 10);
+            long messageNumber = (long)(Math.random() * 10);
+            byte[] payload = "Mensage".getBytes();
+            long totalHops = (long)(Math.random() * 10);
+            Short sourceId = new Short((short)(Math.random() * 10));
+            Short destinationId = new Short((short)(Math.random() * 10));
+            Short uniqueId = new Short((short)(Math.random() * 100));
+            
+            try {
+                dg.writeLong(numberOfTotalMessage);
+                dg.writeLong(messageNumber);
+                dg.write(payload);
+                dg.writeLong(totalHops);
+                dg.writeShort(sourceId);
+                dg.writeShort(destinationId);
+                dg.writeShort(uniqueId);
+            }catch(Exception e){
+                //throw e;
+                System.out.print("Exception writing dg: " + e);
+            }
+            
+            try {
+                spotCommunicationSendConnection.send(dg);
+            }catch(Exception e) {
+                //throw e;
+                System.out.print("Exception sending dg: " + e);
+            }
+        }
+                
     }
 
     /**
