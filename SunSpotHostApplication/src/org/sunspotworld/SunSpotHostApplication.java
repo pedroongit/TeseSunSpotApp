@@ -15,7 +15,13 @@ import com.sun.spot.util.IEEEAddress;
 
 import java.io.*;
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import javax.microedition.io.*;
 
 
@@ -31,33 +37,44 @@ public class SunSpotHostApplication {
      */
     public void run() {
         RadiogramConnection sCon = null;
-        RadiogramConnection rCon = null;
         Datagram dg = null;
         DateFormat fmt = DateFormat.getTimeInstance();
-         
-        try {
-            // Open up a server-side broadcast radiogram connection
-            // to listen for sensor readings being sent by different SPOTs
-            rCon = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
-            dg = rCon.newDatagram(rCon.getMaximumLength());
-        } catch (Exception e) {
-             System.err.println("setUp caught " + e.getMessage());
-             //throw e;
-        }
-
-        // Main data collection loop
-        while (true) {
+        Map<Short, String> idAddressMap = new HashMap<Short, String>();
+        
+        //2 spots existentes. TODO: em vez desta maneira, os spots enviam um ping so para que o host conheça o seu IEEE Address
+        idAddressMap.put(new Short("1"), "0014.4F01.0000.6414");
+        idAddressMap.put(new Short("2"), "0014.4F01.0000.612C");
+        
+        Iterator<Entry<Short,String>> idAddressIterator = idAddressMap.entrySet().iterator();
+        while(idAddressIterator.hasNext()){
             try {
-                // Read sensor sample received over the radio
-                rCon.receive(dg);
-                String addr = dg.getAddress();  // read sender's Id
-                long time = dg.readLong();      // read time of the reading
-                int val = dg.readInt();         // read the sensor value
-                System.out.println(fmt.format(new Date(time)) + "  from: " + addr + "   value = " + val);
+                Entry<Short,String> next = idAddressIterator.next();
+                Short id = next.getKey();
+                String ieeeAddress = next.getValue();
+                
+                // Open up a server-side broadcast radiogram connection
+                // to listen for sensor readings being sent by different SPOTs
+                sCon = (RadiogramConnection) Connector.open("radiogram://:" + ieeeAddress + HOST_PORT);
+                dg = sCon.newDatagram(sCon.getMaximumLength());
             } catch (Exception e) {
-                System.err.println("Caught " + e +  " while reading sensor samples.");
-                //throw e;
+                 System.err.println("setUp caught " + e.getMessage());
+                 //throw e;
             }
+        }
+        /* Envio do id a cada Spot.
+         * Numa fase inicial, address dos spots é hardcodded
+         */
+        
+        try {
+
+            dg.reset();
+            dg.writeShort(now);
+            sCon.send(dg);
+
+            System.out.println(fmt.format(new Date(time)) + "  from: " + addr + "   value = " + val);
+        } catch (Exception e) {
+            System.err.println("Caught " + e +  " while reading sensor samples.");
+            //throw e;
         }
     }
 
