@@ -8,6 +8,7 @@ package org.sunspotworld;
 
 import com.sun.spot.io.j2me.radiogram.*;
 import com.sun.spot.peripheral.ota.OTACommandServer;
+import com.sun.spot.util.Utils;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -46,15 +47,13 @@ public class SunSpotHostApplication {
                 String ieeeAddress = next.getValue();
                 
                 // Abre conexao para o Spot corrente
-                sCon = (RadiogramConnection) Connector.open("radiogram://:" + ieeeAddress + HOST_PORT);
+                sCon = (RadiogramConnection) Connector.open("radiogram://" + ieeeAddress + ":"+HOST_PORT);
                 
                 // Escreve e envia o datagrama
+                dg = sCon.newDatagram(sCon.getMaximumLength());
                 dg.reset();
                 dg.writeShort(id);
                 sCon.send(dg);
-                
-                
-                dg = sCon.newDatagram(sCon.getMaximumLength());
             } catch (Exception e) {
                  System.err.println("setUp caught " + e.getMessage());
                  //throw e;
@@ -68,13 +67,14 @@ public class SunSpotHostApplication {
         }
         
         /*
-         * Ciclo que envia mensagens para os Spots
+         * Ciclo que envia mensagens para os Spots.
+         * No futuro receberá mensagens vindas do simulador em vez de criar mensagens random
          */
         while(true) {
             // dummy message values
             long numberOfTotalMessage = (long)(Math.random() * 10);
             long messageNumber = (long)(Math.random() * 10);
-            byte[] payload = "Mensage".getBytes();
+            //byte[] payload = "Mensage".getBytes();
             long totalHops = (long)(Math.random() * 10);
             Short sourceId = new Short((short)(Math.random() * 10));
             Short destinationId = new Short((short)(Math.random() * 10));
@@ -83,7 +83,7 @@ public class SunSpotHostApplication {
             try {
                 dg.writeLong(numberOfTotalMessage);
                 dg.writeLong(messageNumber);
-                dg.write(payload);
+                //dg.write(payload);
                 dg.writeLong(totalHops);
                 dg.writeShort(sourceId);
                 dg.writeShort(destinationId);
@@ -99,6 +99,13 @@ public class SunSpotHostApplication {
                 //throw e;
                 System.out.print("Exception sending dg: " + e);
             }
+            
+            System.out.print("Broadcasted message: "+" numberOfTotalMessage: "+ numberOfTotalMessage
+                    +" messageNumber: "+ messageNumber+/*" payload: "+ payload +*/" totalHops: "+ totalHops
+                    +" sourceId: "+ sourceId +" destinationId: "+ destinationId +" uniqueId: "+ uniqueId);
+            
+            // sleep 10 segundos
+            Utils.sleep(10*1000);
         }
                 
     }
