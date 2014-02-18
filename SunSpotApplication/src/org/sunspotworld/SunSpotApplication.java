@@ -43,6 +43,7 @@ public class SunSpotApplication extends MIDlet {
     //private boolean portTableReceived = false;
     
     protected void startApp() throws MIDletStateChangeException {
+        System.out.print("MAMAKUDIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII");
         RadiogramConnection hostReceiveConnection = null;
         //TODO: nao sei se sencon vai ser usado...
         RadiogramConnection hostSendConnection = null;
