@@ -6,10 +6,10 @@
 
 package org.sunspotworld;
 
-//import com.sun.spot.resources.Resources;
-//import com.sun.spot.resources.transducers.ITriColorLED;
-//import com.sun.spot.resources.transducers.ITriColorLEDArray;
-//import com.sun.spot.util.Utils;
+import com.sun.spot.resources.Resources;
+import com.sun.spot.resources.transducers.ITriColorLED;
+import com.sun.spot.resources.transducers.ITriColorLEDArray;
+import com.sun.spot.util.Utils;
 import javax.microedition.io.*;
 import com.sun.spot.io.j2me.radiogram.*;
 import javax.microedition.midlet.MIDlet;
@@ -31,9 +31,17 @@ public class SunSpotApplication extends MIDlet {
     private static final int ROUTE = 1;
     private static final int DONOTHING = 2;
     
+    private static final String HOST_ADDRESS = "0014.4F01.0000.612C";
+    
+    private RadiogramConnection hostReceiveConnection = null;
+    //private RadiogramConnection hostSendConnection = null;
+    private RadiogramConnection spotCommunicationReceiveConnection = null;
+    private RadiogramConnection spotCommunicationSendConnection = null;
+    private Datagram dg = null;
+    
     //Escolher que aplicação correr. No futuro, se possivel criar set/get aplication que recebe/devolve a classe de aplicação
-    private final HelloApplication app = new HelloApplication();
-    private final FloodingRoutingLayer layer = new FloodingRoutingLayer();
+//    private HelloApplication app = new HelloApplication();
+//    private FloodingRoutingLayer layer = new FloodingRoutingLayer();
         
     /**
      * The id of the node. It is allowed that two nodes have the same id in the
@@ -43,25 +51,14 @@ public class SunSpotApplication extends MIDlet {
     //private boolean portTableReceived = false;
     
     protected void startApp() throws MIDletStateChangeException {
-        System.out.print("MAMAKUDIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII");
-        RadiogramConnection hostReceiveConnection = null;
-        //TODO: nao sei se sencon vai ser usado...
-        RadiogramConnection hostSendConnection = null;
-        Datagram dg = null;
-        RadiogramConnection spotCommunicationReceiveConnection = null;
-        RadiogramConnection spotCommunicationSendConnection = null;
-        
         // Listen for downloads/commands over USB connection
         new com.sun.spot.service.BootloaderListenerService().getInstance().start();
 
-        this.openHostConnections(hostReceiveConnection, hostSendConnection);
-
         // Recebe o seu id vindo do host. Enquanto n�o tiver recebido, continua a tentar.
-        this.receiveIdFromHost(hostReceiveConnection, hostReceiveConnection, dg);
+        this.openHostConnections();
+        this.receiveIdFromHost();
 
-        
-        this.openSpotCommunicationConnections(spotCommunicationReceiveConnection, spotCommunicationSendConnection);
-        
+        this.openSpotCommunicationConnections();
         
         /*
          * Loop infinito
@@ -73,7 +70,7 @@ public class SunSpotApplication extends MIDlet {
          * 
          */
         while (true) {
-            try {
+            try {System.out.print("mamamamamamakudiiii");
                 spotCommunicationReceiveConnection.receive(dg);
                 
                 long numberOfTotalMessage = dg.readLong();
@@ -87,14 +84,14 @@ public class SunSpotApplication extends MIDlet {
                 Short uniqueId = new Short(dg.readShort());
                 Message m = new Message(numberOfTotalMessage, messageNumber, payload, totalHops, sourceId, destinationId, uniqueId);
                 
-                int result = layer.onReceiveMessage(m);
+                int result = ROUTE;//layer.onReceiveMessage(m);
                 switch(result){
                     case RECEIVE:
-                        app.onMessageReceived(m);
+//                        app.onMessageReceived(m);
                         break;
                     case ROUTE:
                         m.hop();
-                        layer.onRouteMessage(m);
+//                        layer.onRouteMessage(m);
                         broadcast(m);
                         break;
                     case DONOTHING:
@@ -113,11 +110,26 @@ public class SunSpotApplication extends MIDlet {
      ***************************************/
 
     /**
-     * @param spotCommunicationReceiveConnection
-     * @param spotCommunicationSendConnection
+     * Abre conexao com o Host para posteriormente receber id
      * @return 
      */
-    public boolean openSpotCommunicationConnections(RadiogramConnection spotCommunicationReceiveConnection, RadiogramConnection spotCommunicationSendConnection) {
+    public boolean openHostConnections(){
+        try{
+            hostReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
+            //hostSendConnection = (RadiogramConnection) Connector.open("radiogram://"+HOST_ADDRESS+":"+HOST_PORT);
+            return true;
+        } catch(Exception e){
+            System.err.println("Caught " + e + " in host connection initialization.");
+            //Penso que isto faz com que termine a aplicacao
+            //notifyDestroyed();
+            return false;
+        }
+    }
+    
+    /**
+     * @return 
+     */
+    public boolean openSpotCommunicationConnections() {
         
         try{
             spotCommunicationReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
@@ -131,31 +143,25 @@ public class SunSpotApplication extends MIDlet {
         }
     }
     
-    //talvez seja preciso criar um metodo para cada
-    public boolean openHostConnections(RadiogramConnection hostReceiveConnection, RadiogramConnection hostSendConnection){
-        try{
-            hostReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
-            hostSendConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
-            return true;
-        } catch(Exception e){
-            System.err.println("Caught " + e + " in host connection initialization.");
-            //TODO: ver que � isto
-            notifyDestroyed();
-            return false;
-        }
-    }
-    
-    public boolean receiveIdFromHost(RadiogramConnection hostReceiveConnection, RadiogramConnection hostSendConnection, Datagram dg){
+    /**
+     * Recebe id vindo do Host
+     */
+    public void receiveIdFromHost(){
         try {
-            dg = hostReceiveConnection.newDatagram(hostReceiveConnection.getMaximumLength());
-            short idFromHost = dg.readShort();
+            //recebe id
+            Datagram dgId = hostReceiveConnection.newDatagram(hostReceiveConnection.getMaximumLength());
+            //bloqueia ate' receber datagram do host
+            hostReceiveConnection.receive(dgId);
+            short idFromHost = dgId.readShort();
+            dgId.reset();
             this.setId(idFromHost);
-            return true;
+//            dg = hostSendConnection.newDatagram(hostSendConnection.getMaximumLength());
+//            dg.writeBoolean(true);
+//            hostSendConnection.send(dg);
+//            dg.reset();
         } catch (Exception e) {
             // on catch talvez pedir de novo
-            
-            return false;
-        }        
+        }
     }
     
     public void broadcast(Object message){

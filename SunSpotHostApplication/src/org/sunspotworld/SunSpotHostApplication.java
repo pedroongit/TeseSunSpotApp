@@ -30,30 +30,49 @@ public class SunSpotHostApplication {
      */
     public void run() {
         RadiogramConnection sCon = null;
+        //RadiogramConnection rAckCon = null;
+//        try {
+//            rAckCon = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
+//        } catch (Exception e) {
+//        }
+        
         RadiogramConnection spotCommunicationSendConnection = null;
         Datagram dg = null;
         Map<Short, String> idAddressMap = new HashMap<Short, String>();
 //      Map<Short, RadiogramConnection> idConnectionMap = new HashMap<Short, RadiogramConnection>();
         
         //2 spots existentes. Numa fase inicial, address dos spots é hardcodded TODO: em vez desta maneira, os spots enviam um ping so para que o host conheça o seu IEEE Address
-        idAddressMap.put(new Short("1"), "0014.4F01.0000.6414");
-        idAddressMap.put(new Short("2"), "0014.4F01.0000.612C");
+        idAddressMap.put(new Short("1"), "0014.4F01.0000.612C");
+        idAddressMap.put(new Short("2"), "0014.4F01.0000.6414");
         
         Iterator<Entry<Short,String>> idAddressIterator = idAddressMap.entrySet().iterator();
         while(idAddressIterator.hasNext()){
             try {
                 Entry<Short,String> next = idAddressIterator.next();
+                System.out.println("iterating on " + next.getValue());
                 Short id = next.getKey();
                 String ieeeAddress = next.getValue();
-                
+
                 // Abre conexao para o Spot corrente
                 sCon = (RadiogramConnection) Connector.open("radiogram://" + ieeeAddress + ":"+HOST_PORT);
-                
+
                 // Escreve e envia o datagrama
                 dg = sCon.newDatagram(sCon.getMaximumLength());
-                dg.reset();
                 dg.writeShort(id);
-                sCon.send(dg);
+
+//                Datagram dgAck = rAckCon.newDatagram(rAckCon.getMaximumLength());
+//                boolean received = false;
+                try {
+                    System.out.println("Sending id");
+                    sCon.send(dg);
+//                    rAckCon.receive(dgAck);
+//                    received = dgAck.readBoolean();
+//                    System.out.println("Received "+received);
+                } catch(Exception e){
+
+                }
+                //dgAck.reset();
+                dg.reset();
             } catch (Exception e) {
                  System.err.println("setUp caught " + e.getMessage());
                  //throw e;
