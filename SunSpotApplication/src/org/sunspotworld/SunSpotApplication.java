@@ -34,21 +34,19 @@ public class SunSpotApplication extends MIDlet {
     private static final String HOST_ADDRESS = "0014.4F01.0000.612C";
     
     private RadiogramConnection hostReceiveConnection = null;
-    //private RadiogramConnection hostSendConnection = null;
-    private RadiogramConnection spotCommunicationReceiveConnection = null;
-    private RadiogramConnection spotCommunicationSendConnection = null;
-    private Datagram dg = null;
+    private RadiogramConnection hostSendConnection = null;
+    private RadiogramConnection rConMessage = null;
+    //private RadiogramConnection spotCommunicationSendConnection = null;
     
     //Escolher que aplicação correr. No futuro, se possivel criar set/get aplication que recebe/devolve a classe de aplicação
 //    private HelloApplication app = new HelloApplication();
-//    private FloodingRoutingLayer layer = new FloodingRoutingLayer();
+    private FloodingRoutingLayer layer = new FloodingRoutingLayer();
         
     /**
      * The id of the node. It is allowed that two nodes have the same id in the
      * simulator.
      */
     protected short id;
-    //private boolean portTableReceived = false;
     
     protected void startApp() throws MIDletStateChangeException {
         // Listen for downloads/commands over USB connection
@@ -70,29 +68,30 @@ public class SunSpotApplication extends MIDlet {
          * 
          */
         while (true) {
-            try {System.out.print("mamamamamamakudiiii");
-                spotCommunicationReceiveConnection.receive(dg);
+            try {
+                Datagram dgReceiveMessage = rConMessage.newDatagram(rConMessage.getMaximumLength());
+                rConMessage.receive(dgReceiveMessage);
                 
-                long numberOfTotalMessage = dg.readLong();
-                long messageNumber = dg.readLong();
-                byte[] b = null;
-                dg.readFully(b);
+                long numberOfTotalMessage = dgReceiveMessage.readLong();
+                long messageNumber = dgReceiveMessage.readLong();
+                byte[] b = "somebytes".getBytes();//null;
+//                dgReceiveMessage.readFully(b);
                 byte[] payload = b;
-                long totalHops = dg.readLong();
-                Short sourceId = new Short(dg.readShort());
-                Short destinationId = new Short(dg.readShort());
-                Short uniqueId = new Short(dg.readShort());
+                long totalHops = dgReceiveMessage.readLong();
+                Short sourceId = new Short(dgReceiveMessage.readShort());
+                Short destinationId = new Short(dgReceiveMessage.readShort());
+                Short uniqueId = new Short(dgReceiveMessage.readShort());
                 Message m = new Message(numberOfTotalMessage, messageNumber, payload, totalHops, sourceId, destinationId, uniqueId);
                 
-                int result = ROUTE;//layer.onReceiveMessage(m);
+                int result = layer.onReceiveMessage(m);
                 switch(result){
                     case RECEIVE:
 //                        app.onMessageReceived(m);
                         break;
                     case ROUTE:
-                        m.hop();
+                        //m.hop();
 //                        layer.onRouteMessage(m);
-                        broadcast(m);
+                        //broadcast(m);
                         break;
                     case DONOTHING:
                         break;
@@ -116,29 +115,12 @@ public class SunSpotApplication extends MIDlet {
     public boolean openHostConnections(){
         try{
             hostReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
-            //hostSendConnection = (RadiogramConnection) Connector.open("radiogram://"+HOST_ADDRESS+":"+HOST_PORT);
+            hostSendConnection = (RadiogramConnection) Connector.open("radiogram://"+HOST_ADDRESS+":"+HOST_PORT);
             return true;
         } catch(Exception e){
             System.err.println("Caught " + e + " in host connection initialization.");
             //Penso que isto faz com que termine a aplicacao
             //notifyDestroyed();
-            return false;
-        }
-    }
-    
-    /**
-     * @return 
-     */
-    public boolean openSpotCommunicationConnections() {
-        
-        try{
-            spotCommunicationReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
-            spotCommunicationSendConnection = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
-            return true;
-        } catch(Exception e){
-            System.err.println("Caught " + e + " in spot connection initialization.");
-            //TODO: ver que � isto
-            notifyDestroyed();
             return false;
         }
     }
@@ -155,16 +137,32 @@ public class SunSpotApplication extends MIDlet {
             short idFromHost = dgId.readShort();
             dgId.reset();
             this.setId(idFromHost);
-//            dg = hostSendConnection.newDatagram(hostSendConnection.getMaximumLength());
-//            dg.writeBoolean(true);
-//            hostSendConnection.send(dg);
-//            dg.reset();
+//            Datagram dgAck = hostSendConnection.newDatagram(hostSendConnection.getMaximumLength());
+//            dgAck.writeBoolean(true);
+//            hostSendConnection.send(dgAck);
+//            dgAck.reset();
         } catch (Exception e) {
             // on catch talvez pedir de novo
         }
     }
     
-    public void broadcast(Object message){
+    /**
+     * @return 
+     */
+    public boolean openSpotCommunicationConnections() {
+        
+        try{
+            rConMessage = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
+            //spotCommunicationSendConnection = (RadiogramConnection) Connector.open("radiogram://:" + SPOT_COMMUNICATION_PORT);
+            return true;
+        } catch(Exception e){
+            System.err.println("Caught " + e + " in spot connection initialization.");
+            //notifyDestroyed();
+            return false;
+        }
+    }
+    
+/*    public void broadcast(Object message){
         DatagramConnection connection = null;
         Datagram datagram = null;
         
@@ -200,10 +198,10 @@ public class SunSpotApplication extends MIDlet {
     
     public void receive(){
         
-    }
+    }*/
     
     /***************************************
-     *         communication methods       *
+     *       end communication methods     *
      ***************************************/
     
     
@@ -228,7 +226,7 @@ public class SunSpotApplication extends MIDlet {
     }
     
     /***************************************
-     *         auxiliary methods       *
+     *       end auxiliary methods         *
      ***************************************/
     
     protected void pauseApp() {
