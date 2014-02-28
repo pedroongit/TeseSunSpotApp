@@ -13,8 +13,10 @@ import java.util.Hashtable;
 public class FloodingRoutingLayer {
 
     //TODO: refactor..usar um array em vez desta estrutura
-    protected Hashtable receivedMessages;
-    private SunSpotApplication s;
+    //protected Hashtable receivedMessages;
+    protected Long[] receivedMessages;
+    private int receivedMessagesCounter;
+    private short id;
 
     private static final int RECEIVE = 0;
     private static final int ROUTE = 1;
@@ -22,9 +24,9 @@ public class FloodingRoutingLayer {
 
     public FloodingRoutingLayer() {
         super();
-        this.receivedMessages = new Hashtable();
-
-        s = new SunSpotApplication();
+        //this.receivedMessages = new Hashtable();
+        receivedMessages = new Long[1000];
+        receivedMessagesCounter = 0;
     }
     
     /**
@@ -33,16 +35,16 @@ public class FloodingRoutingLayer {
      * Stores the sender from which it first receives the message, and route
      * the message.
      */
-    public int onReceiveMessage(Object message) {
+    public int onReceiveMessage(Message msg) {
 
-        FloodingMessage msg = (FloodingMessage) message;
+        //FloodingMessage msg = (FloodingMessage) message;
         //porque o contains nao aceita tipos primitios
         Long lObj = new Long(msg.getMessageNumber());
-        
-        if (!receivedMessages.contains(lObj)) {
-            receivedMessages.put(lObj, lObj);
+        if (!contains(receivedMessages, lObj)) {
+            //receivedMessages.put(lObj, lObj);
+            receivedMessages[receivedMessagesCounter++] = lObj;
             //se entra no if significa que o no' e' o destino
-            if (msg.getDestinationId().equals(new Long(0))) {//getUniqueId()
+            if (msg.getDestinationId().equals(new Short(getUniqueId()))) {
                 //receiveMessage(msg); //imprime a mensagem?
                 return RECEIVE; 
             } else {
@@ -62,7 +64,7 @@ public class FloodingRoutingLayer {
                 //Thread.sleep(500);
         FloodingMessage msg = (FloodingMessage) message;
         Long lObj = new Long(msg.getMessageNumber());
-        receivedMessages.put(lObj, lObj);//add(((Message) message).getMessageNumber());
+        receivedMessages[receivedMessagesCounter++] = lObj;//add(((Message) message).getMessageNumber());
                 //msg = (FloodingMessage) encapsulateMessage((Message) message);
                 //send(msg);
         //} catch (InterruptedException ex) {
@@ -70,7 +72,6 @@ public class FloodingRoutingLayer {
         //}
         return true;
     }
-
     
     //penso que se pode apagar
     public void onRouteMessage(Object message) {
@@ -83,8 +84,27 @@ public class FloodingRoutingLayer {
         //broadcast
     }
 
-    /*
-    public Object getUniqueId() {
-        return getNode().getId();
-    }*/
+    
+    public short getUniqueId() {
+        return this.id;
+    }
+    public void setUniqueId(short id) {
+        this.id = id;
+    }
+    
+    
+    
+    
+    /***************************/
+    /******Private methods******/
+    /***************************/
+    
+    private boolean contains(Long[] array, Long value) {
+        for(int i = 0; i < array.length; i++){
+            if(array[i] == value){
+                return true;
+            }
+        }
+        return false;
+    }
 }

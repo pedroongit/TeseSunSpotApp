@@ -41,8 +41,8 @@ public class SunSpotHostApplication {
 //      Map<Short, RadiogramConnection> idConnectionMap = new HashMap<Short, RadiogramConnection>();
         
         //2 spots existentes. Numa fase inicial, address dos spots é hardcodded TODO: em vez desta maneira, os spots enviam um ping so para que o host conheça o seu IEEE Address
-        idAddressMap.put(new Short("2"), "0014.4F01.0000.6414");
-        //idAddressMap.put(new Short("1"), "0014.4F01.0000.612C");
+//        idAddressMap.put(new Short("2"), "0014.4F01.0000.6414");
+        idAddressMap.put(new Short("1"), "0014.4F01.0000.612C");
         
         Iterator<Entry<Short,String>> idAddressIterator = idAddressMap.entrySet().iterator();
         while(idAddressIterator.hasNext()){
@@ -63,7 +63,7 @@ public class SunSpotHostApplication {
                 boolean received = false;
                 while(!received) {
                     try {
-                        System.out.println("Sending id and trying to receive ack");
+                        System.out.println("Sending id");
                         sConSendId.send(dg);
                         received = true;
 //                        //receber ACK timeout 10 segundos

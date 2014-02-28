@@ -34,13 +34,13 @@ public class SunSpotApplication extends MIDlet {
     private static final String HOST_ADDRESS = "0014.4F01.0000.612C";
     
     private RadiogramConnection hostReceiveConnection = null;
-    private RadiogramConnection hostSendConnection = null;
+//    private RadiogramConnection hostSendConnection = null;
     private RadiogramConnection rConMessage = null;
     //private RadiogramConnection spotCommunicationSendConnection = null;
     
     //Escolher que aplicação correr. No futuro, se possivel criar set/get aplication que recebe/devolve a classe de aplicação
 //    private HelloApplication app = new HelloApplication();
-    private FloodingRoutingLayer layer = new FloodingRoutingLayer();
+    private FloodingRoutingLayer RoutingLayer = new FloodingRoutingLayer();
         
     /**
      * The id of the node. It is allowed that two nodes have the same id in the
@@ -83,7 +83,7 @@ public class SunSpotApplication extends MIDlet {
                 Short uniqueId = new Short(dgReceiveMessage.readShort());
                 Message m = new Message(numberOfTotalMessage, messageNumber, payload, totalHops, sourceId, destinationId, uniqueId);
                 
-                int result = layer.onReceiveMessage(m);
+                int result = RoutingLayer.onReceiveMessage(m);
                 switch(result){
                     case RECEIVE:
 //                        app.onMessageReceived(m);
@@ -115,7 +115,7 @@ public class SunSpotApplication extends MIDlet {
     public boolean openHostConnections(){
         try{
             hostReceiveConnection = (RadiogramConnection) Connector.open("radiogram://:" + HOST_PORT);
-            hostSendConnection = (RadiogramConnection) Connector.open("radiogram://"+HOST_ADDRESS+":"+HOST_PORT);
+//            hostSendConnection = (RadiogramConnection) Connector.open("radiogram://"+HOST_ADDRESS+":"+HOST_PORT);
             return true;
         } catch(Exception e){
             System.err.println("Caught " + e + " in host connection initialization.");
@@ -219,6 +219,7 @@ public class SunSpotApplication extends MIDlet {
      */
     public final void setId(short id) {
         this.id = id;
+        RoutingLayer.setUniqueId(id);
     }
     
     public short getId() {
