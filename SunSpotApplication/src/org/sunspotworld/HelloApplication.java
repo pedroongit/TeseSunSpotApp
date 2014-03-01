@@ -12,8 +12,8 @@ package org.sunspotworld;
  */
 public class HelloApplication {
 
-    protected void onMessageReceived(Object message) {
-        Message m = (Message) message;
+    protected void onMessageReceived(Message m) {
+//        Message m = (Message) message;
         //System.out.println("Node: " + getNode().getId() + "\n" + "Data: " + new String(m.getPayload()));
     }
 
@@ -33,6 +33,7 @@ public class HelloApplication {
         return (short) 0;
     }*/
 
+    //Se não permitir que spots sejam senders, nao vou precisar de sendHelloTo...
     void sendHelloTo(short id) {
         FloodingMessage m = new FloodingMessage("HELLO".getBytes());
         m.setType((byte) 1);

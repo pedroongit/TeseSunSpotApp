@@ -40,7 +40,7 @@ public class SunSpotHostApplication {
         Map<Short, String> idAddressMap = new HashMap<Short, String>();
 //      Map<Short, RadiogramConnection> idConnectionMap = new HashMap<Short, RadiogramConnection>();
         
-        //2 spots existentes. Numa fase inicial, address dos spots é hardcodded TODO: em vez desta maneira, os spots enviam um ping so para que o host conheça o seu IEEE Address
+        //2 spots existentes. Numa fase inicial, address dos spots é hardcodded TODO: spots enviam um ping so para que o host conheça o seu IEEE Address
 //        idAddressMap.put(new Short("2"), "0014.4F01.0000.6414");
         idAddressMap.put(new Short("1"), "0014.4F01.0000.612C");
         

@@ -39,8 +39,8 @@ public class SunSpotApplication extends MIDlet {
     //private RadiogramConnection spotCommunicationSendConnection = null;
     
     //Escolher que aplicação correr. No futuro, se possivel criar set/get aplication que recebe/devolve a classe de aplicação
-//    private HelloApplication app = new HelloApplication();
-    private FloodingRoutingLayer RoutingLayer = new FloodingRoutingLayer();
+    private HelloApplication app = new HelloApplication();
+    private FloodingRoutingLayer routingLayer = new FloodingRoutingLayer();
         
     /**
      * The id of the node. It is allowed that two nodes have the same id in the
@@ -83,15 +83,15 @@ public class SunSpotApplication extends MIDlet {
                 Short uniqueId = new Short(dgReceiveMessage.readShort());
                 Message m = new Message(numberOfTotalMessage, messageNumber, payload, totalHops, sourceId, destinationId, uniqueId);
                 
-                int result = RoutingLayer.onReceiveMessage(m);
+                int result = routingLayer.onReceiveMessage(m);
                 switch(result){
                     case RECEIVE:
-//                        app.onMessageReceived(m);
+                        app.onMessageReceived(m);
                         break;
                     case ROUTE:
-                        //m.hop();
-//                        layer.onRouteMessage(m);
-                        //broadcast(m);
+                        m.hop();
+                        routingLayer.onRouteMessage(m);
+                        broadcast(m);
                         break;
                     case DONOTHING:
                         break;
@@ -162,7 +162,7 @@ public class SunSpotApplication extends MIDlet {
         }
     }
     
-/*    public void broadcast(Object message){
+    public void broadcast(Object message){
         DatagramConnection connection = null;
         Datagram datagram = null;
         
@@ -191,7 +191,7 @@ public class SunSpotApplication extends MIDlet {
             System.err.println("Caught " + e + " while sending datagrams.");
         }
     }
-    
+/*    
     public void send(){
         
     }
@@ -219,7 +219,7 @@ public class SunSpotApplication extends MIDlet {
      */
     public final void setId(short id) {
         this.id = id;
-        RoutingLayer.setUniqueId(id);
+        routingLayer.setUniqueId(id);
     }
     
     public short getId() {
